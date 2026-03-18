@@ -31,20 +31,42 @@ export default function PlayerView() {
   const [orderQty, setOrderQty] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [summary, setSummary] = useState(null);
-  const rejoinAttempted = useRef(false);
+  const firstLoad = useRef(true);
+
+  // Refs to avoid stale closures in socket handlers
+  const codeRef = useRef(code);
+  const nameRef = useRef(name);
+  const assignmentRef = useRef(assignment);
+  useEffect(() => { codeRef.current = code; }, [code]);
+  useEffect(() => { nameRef.current = name; }, [name]);
+  useEffect(() => { assignmentRef.current = assignment; }, [assignment]);
 
   useEffect(() => {
     if (!socket.connected) socket.connect();
 
-    // Try to rejoin from saved session on initial load
-    const tryRejoin = () => {
-      if (rejoinAttempted.current) return;
-      rejoinAttempted.current = true;
+    // Rejoin using sessionStorage (page reload) or current refs (auto-reconnect)
+    const handleConnect = () => {
+      // On auto-reconnect (not first load), re-register using current state
+      const a = assignmentRef.current;
+      const c = codeRef.current;
+      const n = nameRef.current;
+      if (!firstLoad.current && a && c && n) {
+        socket.emit('rejoin-game', {
+          code: c, name: n, teamName: a.teamName, role: a.role
+        }, (res) => {
+          if (res.success && res.playerState) {
+            setPlayerState(res.playerState);
+            setSubmitted(res.playerState.submitted);
+          }
+        });
+        return;
+      }
+      firstLoad.current = false;
 
+      // First load — try sessionStorage
       const saved = loadSession();
       if (!saved) return;
 
-      // If we have a full assignment (team + role), try to reclaim it
       if (saved.code && saved.name && saved.teamName && saved.role) {
         setPhase('rejoining');
         socket.emit('rejoin-game', {
@@ -63,7 +85,6 @@ export default function PlayerView() {
             }
             setPhase(res.status === 'playing' ? 'playing' : res.status === 'finished' ? 'finished' : 'waiting');
           } else {
-            // Rejoin failed — fall back to join form with prefilled values
             clearSession();
             setCode(saved.code);
             setName(saved.name);
@@ -71,7 +92,6 @@ export default function PlayerView() {
           }
         });
       } else if (saved.code && saved.name) {
-        // Was joined but not yet assigned — rejoin as unassigned
         setCode(saved.code);
         setName(saved.name);
         socket.emit('join-game', { code: saved.code, name: saved.name }, (res) => {
@@ -86,22 +106,19 @@ export default function PlayerView() {
     };
 
     if (socket.connected) {
-      tryRejoin();
-    } else {
-      socket.on('connect', tryRejoin);
+      handleConnect();
     }
+    socket.on('connect', handleConnect);
 
     socket.on('assigned', (data) => {
       setAssignment(data);
-      // Save assignment to session
-      saveSession({ code, name, teamName: data.teamName, role: data.role });
+      saveSession({ code: codeRef.current, name: nameRef.current, teamName: data.teamName, role: data.role });
       setPhase('waiting');
     });
 
     socket.on('unassigned', () => {
       setAssignment(null);
-      // Keep code/name but clear team/role
-      saveSession({ code, name });
+      saveSession({ code: codeRef.current, name: nameRef.current });
       setPhase('waiting');
     });
 
@@ -152,7 +169,7 @@ export default function PlayerView() {
     });
 
     return () => {
-      socket.off('connect', tryRejoin);
+      socket.off('connect', handleConnect);
       socket.off('assigned');
       socket.off('unassigned');
       socket.off('game-started');

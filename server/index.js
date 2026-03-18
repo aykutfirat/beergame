@@ -453,6 +453,27 @@ io.on('connection', (socket) => {
     if (!game) return callback({ success: false, error: 'Game not found' });
     if (game.status === 'finished') return callback({ success: false, error: 'Game is finished' });
 
+    // Check if this player name already has an assigned role — auto-reclaim it
+    for (const [teamName, team] of Object.entries(game.teams)) {
+      for (const role of ROLES) {
+        const pos = team.positions[role];
+        if (pos.playerName === name) {
+          // Reclaim: update socket ID in player map and position
+          game.players.delete(pos.playerId); // remove old socket entry
+          pos.playerId = socket.id;
+          game.players.set(socket.id, { name, teamName, role });
+          socket.join(`game:${code}`);
+          socket.emit('assigned', { teamName, role, roleLabel: ROLE_LABELS[role] });
+          if (game.status === 'playing') {
+            socket.emit('game-started');
+            socket.emit('player-state', getPlayerState(game, teamName, role));
+          }
+          io.to(`teacher:${code}`).emit('game-state', getGameState(game));
+          return callback({ success: true, waiting: false, name });
+        }
+      }
+    }
+
     // Register as unassigned player
     game.players.set(socket.id, { name, teamName: null, role: null });
     socket.join(`game:${code}`);
