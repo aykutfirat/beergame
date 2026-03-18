@@ -9,6 +9,9 @@ const ROLES = ['retailer', 'wholesaler', 'distributor', 'factory'];
 const ROLE_LABELS = { retailer: 'Retailer', wholesaler: 'Wholesaler', distributor: 'Distributor', factory: 'Factory' };
 
 export default function Dashboard() {
+  const [authenticated, setAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
   const [phase, setPhase] = useState('setup'); // setup | lobby | playing | finished
   const [gameState, setGameState] = useState(null);
   const [players, setPlayers] = useState([]);
@@ -172,6 +175,39 @@ export default function Dashboard() {
   const currentTeam = gameState && selectedTeam ? gameState.teams[selectedTeam] : null;
 
   // ─── Setup Panel ────────────────────────────────────────────────────────────
+  // ─── Password Gate ──────────────────────────────────────────────────────────
+  if (!authenticated) {
+    return (
+      <div className="setup-panel">
+        <form className="setup-card" onSubmit={(e) => {
+          e.preventDefault();
+          if (password === 'ytlq') {
+            setAuthenticated(true);
+            setAuthError('');
+          } else {
+            setAuthError('Incorrect password');
+          }
+        }}>
+          <h2>Teacher Login</h2>
+          <div className="form-group">
+            <label>Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter teacher password"
+              autoFocus
+            />
+          </div>
+          {authError && <p className="error-msg">{authError}</p>}
+          <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', marginTop: 16 }}>
+            Login
+          </button>
+        </form>
+      </div>
+    );
+  }
+
   if (phase === 'setup') {
     return (
       <div className="setup-panel">
