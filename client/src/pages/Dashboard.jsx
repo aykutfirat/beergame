@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { socket } from '../socket';
 import SupplyChainDiagram from '../components/SupplyChainDiagram';
 import GameCharts from '../components/GameCharts';
@@ -19,6 +19,10 @@ export default function Dashboard() {
   const [summary, setSummary] = useState(null);
   const [lightTheme, setLightTheme] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
+  const [projectorMode, setProjectorMode] = useState(false);
+  const [autoAdvance, setAutoAdvance] = useState(false);
+  const autoAdvanceRef = useRef(false);
+  useEffect(() => { autoAdvanceRef.current = autoAdvance; }, [autoAdvance]);
 
   // Setup form state
   const [totalWeeks, setTotalWeeks] = useState('35');
@@ -43,6 +47,16 @@ export default function Dashboard() {
 
       if (!selectedTeam && state.teams) {
         setSelectedTeam(Object.keys(state.teams)[0]);
+      }
+
+      // Auto-advance when all players have submitted
+      if (autoAdvanceRef.current && state.status === 'playing') {
+        const allSubmitted = Object.values(state.teams).every(
+          team => ROLES.every(role => team.positions[role]?.submitted)
+        );
+        if (allSubmitted) {
+          socket.emit('advance-round', state.code, () => {});
+        }
       }
     });
 
@@ -280,9 +294,15 @@ export default function Dashboard() {
           )}
           {phase === 'playing' && (
             <>
-              <button className="btn btn-primary" onClick={advanceRound}>
-                Advance Round
-              </button>
+              <label className="toggle-label" title="Automatically advance when all players submit">
+                <input type="checkbox" checked={autoAdvance} onChange={(e) => setAutoAdvance(e.target.checked)} />
+                Auto
+              </label>
+              {!autoAdvance && (
+                <button className="btn btn-primary" onClick={advanceRound}>
+                  Advance Round
+                </button>
+              )}
               <button className="btn btn-secondary" onClick={resetGame}>Reset</button>
             </>
           )}
@@ -293,6 +313,15 @@ export default function Dashboard() {
               </button>
               <button className="btn btn-secondary" onClick={resetGame}>New Game</button>
             </>
+          )}
+          {(phase === 'playing' || phase === 'finished') && (
+            <button
+              className={`btn btn-sm ${projectorMode ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setProjectorMode(!projectorMode)}
+              title="Hide sensitive info for projector display"
+            >
+              {projectorMode ? 'Show Details' : 'Hide Details'}
+            </button>
           )}
           <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
             {lightTheme ? '\u263E' : '\u2600'}
@@ -389,11 +418,18 @@ export default function Dashboard() {
         {/* Supply Chain + Charts (Playing / Finished) */}
         {(phase === 'playing' || phase === 'finished') && currentTeam && (
           <>
-            <SupplyChainDiagram team={currentTeam} customerDemand={gameState.customerDemand} />
+            <SupplyChainDiagram
+              team={currentTeam}
+              customerDemand={gameState.customerDemand}
+              hideDetails={projectorMode}
+            />
 
-            <GameCharts team={currentTeam} week={gameState.week} />
-
-            <CostLeaderboard team={currentTeam} />
+            {!projectorMode && (
+              <>
+                <GameCharts team={currentTeam} week={gameState.week} />
+                <CostLeaderboard team={currentTeam} />
+              </>
+            )}
           </>
         )}
       </div>
