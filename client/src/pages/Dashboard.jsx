@@ -21,11 +21,11 @@ export default function Dashboard() {
   const [showSummary, setShowSummary] = useState(false);
 
   // Setup form state
-  const [totalWeeks, setTotalWeeks] = useState(35);
+  const [totalWeeks, setTotalWeeks] = useState('35');
   const [demandType, setDemandType] = useState('step');
-  const [demandBase, setDemandBase] = useState(4);
-  const [demandStep, setDemandStep] = useState(8);
-  const [demandStepWeek, setDemandStepWeek] = useState(5);
+  const [demandBase, setDemandBase] = useState('4');
+  const [demandStep, setDemandStep] = useState('8');
+  const [demandStepWeek, setDemandStepWeek] = useState('5');
   const [demandCustom, setDemandCustom] = useState('');
   const [teamCount, setTeamCount] = useState(1);
 
@@ -99,14 +99,18 @@ export default function Dashboard() {
   };
 
   const createGame = () => {
+    const weeks = Number(totalWeeks) || 35;
+    const base = Number(demandBase) || 4;
+    const step = Number(demandStep) || 8;
+    const stepWk = Number(demandStepWeek) || 5;
     const demand = demandType === 'custom'
-      ? { type: 'custom', values: demandCustom.split(',').map(Number), base: demandBase }
-      : { type: 'step', base: demandBase, step: demandStep, stepWeek: demandStepWeek };
+      ? { type: 'custom', values: demandCustom.split(',').map(Number), base }
+      : { type: 'step', base, step, stepWeek: stepWk };
 
     // End previous game first (kicks all players)
     const prevCode = gameState?.code;
     const doCreate = () => {
-      socket.emit('create-game', { totalWeeks, demand, teamCount }, (res) => {
+      socket.emit('create-game', { totalWeeks: weeks, demand, teamCount }, (res) => {
         if (res.success) {
           setGameState(res.state);
           setPlayers([]);
@@ -215,7 +219,7 @@ export default function Dashboard() {
           <h2>Create New Game</h2>
           <div className="form-group">
             <label>Number of Weeks</label>
-            <input type="number" value={totalWeeks} onChange={(e) => setTotalWeeks(Number(e.target.value))} min={10} max={100} />
+            <input type="number" value={totalWeeks} onChange={(e) => setTotalWeeks(e.target.value)} min={10} max={100} />
           </div>
           <div className="form-group">
             <label>Demand Pattern</label>
@@ -228,15 +232,15 @@ export default function Dashboard() {
             <div className="setup-row">
               <div className="form-group">
                 <label>Base Demand</label>
-                <input type="number" value={demandBase} onChange={(e) => setDemandBase(Number(e.target.value))} min={0} />
+                <input type="number" value={demandBase} onChange={(e) => setDemandBase(e.target.value)} min={0} />
               </div>
               <div className="form-group">
                 <label>Step Demand</label>
-                <input type="number" value={demandStep} onChange={(e) => setDemandStep(Number(e.target.value))} min={0} />
+                <input type="number" value={demandStep} onChange={(e) => setDemandStep(e.target.value)} min={0} />
               </div>
               <div className="form-group">
                 <label>Step at Week</label>
-                <input type="number" value={demandStepWeek} onChange={(e) => setDemandStepWeek(Number(e.target.value))} min={1} />
+                <input type="number" value={demandStepWeek} onChange={(e) => setDemandStepWeek(e.target.value)} min={1} />
               </div>
             </div>
           ) : (
