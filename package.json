@@ -1,0 +1,17 @@
+{
+  "name": "beer-game",
+  "version": "1.0.0",
+  "description": "MIT Beer Distribution Game for classroom use",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -k \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "cd server && node index.js",
+    "dev:client": "cd client && npm run dev",
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install",
+    "build": "cd client && npm install && npm run build",
+    "start": "cd server && node index.js"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
