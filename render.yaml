@@ -2,7 +2,7 @@ services:
   - type: web
     name: beergame
     runtime: node
-    buildCommand: cd server && npm install && cd ../client && npm install --include=dev && npm run build
+    buildCommand: "cd server && npm install && cd ../client && npm install --production=false && npm run build"
     startCommand: cd server && node index.js
     envVars:
       - key: NODE_ENV
