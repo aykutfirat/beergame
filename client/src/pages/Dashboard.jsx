@@ -381,7 +381,7 @@ export default function Dashboard() {
               </>
             )}
 
-            {teamNames.map(tn => (
+            {(teamNames.length > 1 ? [selectedTeam] : teamNames).map(tn => (
               <div key={tn} style={{ marginBottom: 16 }}>
                 <h4 style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>{tn}</h4>
                 {ROLES.map(role => {
